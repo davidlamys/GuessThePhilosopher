@@ -7,17 +7,16 @@
 
 import UIKit
 
-
-
 class QuizViewController: UIViewController {
     var quizBrain = QuizBrain()
-    
+    let viewModel = QuizViewModel()
+    let soundPlayer = SoundPlayer()
     @IBOutlet weak var progressView: UIProgressView!
     
     
     @IBOutlet weak var leftButton: UIButton!
     @IBOutlet weak var rightButton: UIButton!
-    @IBOutlet weak var checkButton: CheckButton!
+    @IBOutlet weak var bottomCTA: CheckButton!
     
     @IBOutlet weak var bottomView: UIView!
     @IBOutlet weak var bottomViewLabel: UILabel!
@@ -33,7 +32,7 @@ class QuizViewController: UIViewController {
         
         super.viewDidLoad()
         
-        quizBrain.playSound(Sound.start)
+        soundPlayer.playSound(Sound.start)
         progressView.transform = CGAffineTransform(scaleX: 1, y: 3)
         prepareStylingAndQuestion()
     }
@@ -43,56 +42,51 @@ class QuizViewController: UIViewController {
     }
     
     @IBAction func checkButtonTouchDown(_ sender: CheckButton) {
-        checkButton.layer.shadowOffset = CGSize(width: 0, height: 0)
-        checkButton.frame.origin.y += 5
+        bottomCTA.layer.shadowOffset = CGSize(width: 0, height: 0)
+        bottomCTA.frame.origin.y += 5
     }
     
     @IBAction func checkButtonTouchUp(_ sender: UIButton) {
 
-        progressView.progress = Float(quizBrain.questionNum / quizBrain.totalQuestions)
-        checkButton.frame.origin.y -= 5
+        progressView.progress = Float(quizBrain.progress)
+        bottomCTA.frame.origin.y -= 5
 
-        if quizBrain.state == QuizButtonText.CHECK {
-            
-            quizBrain.state = QuizButtonText.CONTINUE
+        switch viewModel.state {
+        case .CHECK:
             if quizBrain.isCorrect(userAnswer: quizBrain.userAnswer) {
-
-                questionCorrect()
+                handleCorrectAnswer()
             } else {
-
-                questionWrong()
+                handleIncorrectAnswer()
             }
             
             authorButtonsEnabled(false)
             raiseBottomView()
-        } else if quizBrain.state == QuizButtonText.CONTINUE {
             
-            quizBrain.state = QuizButtonText.CHECK
-            
+        case .CONTINUE:
             if quizBrain.isGameOver() {
                 gameOver()
             }
             prepareStylingAndQuestion()
             lowerBottomView()
         }
+        
+        viewModel.toggleState()
     }
     
     //MARK: - Question Correct, Wrong or Game Over
-    func questionCorrect() {
+    func handleCorrectAnswer() {
         correctResponseStyling()
-        bottomViewLabel.text = quizBrain.praises.randomElement()?.replacingOccurrences(of: "Author", with: quizBrain.correctAuthor)
-        quizBrain.playSound(Sound.correct)
+        bottomViewLabel.text = viewModel.getPositiveFeedback(quizBrain: quizBrain)
+        soundPlayer.playSound(Sound.correct)
     }
     
-    func questionWrong () {
+    func handleIncorrectAnswer () {
         incorrectResponseStyling()
-        bottomViewLabel.text = quizBrain.shames.randomElement()?.replacingOccurrences(of: "Author", with: quizBrain.correctAuthor)
-        quizBrain.playSound(Sound.wrong)
+        bottomViewLabel.text = viewModel.getNegativeFeedback(quizBrain: quizBrain)
+        soundPlayer.playSound(Sound.wrong)
     }
     
     func gameOver() {
-        quizBrain.questionNum = 0
-        progressView.progress = Float(quizBrain.questionNum / quizBrain.totalQuestions)
         self.performSegue(withIdentifier: "quizToResult", sender: self)
     }
     
@@ -101,7 +95,7 @@ class QuizViewController: UIViewController {
     func prepareStylingAndQuestion() {
         resetAuthorButtonsStyling()
         authorButtonsEnabled(true)
-        checkButton.isEnabled = false
+        bottomCTA.isEnabled = false
         populateQuestionText()
     }
     
@@ -122,7 +116,7 @@ class QuizViewController: UIViewController {
     @IBAction func authorButtonPressed(_ sender: UIButton) {
         resetAuthorButtonsStyling()
         sender.buttonSelectedStyling()
-        checkButton.isEnabled = true
+        bottomCTA.isEnabled = true
         quizBrain.userAnswer = sender.currentTitle ?? ""
     }
     
@@ -131,14 +125,9 @@ class QuizViewController: UIViewController {
         rightButton.authorDefaultStyling()
     }
     
-    func authorButtonsEnabled(_ isTrue: Bool) {
-        if isTrue {
-            leftButton.isUserInteractionEnabled = true
-            rightButton.isUserInteractionEnabled = true
-        } else {
-            leftButton.isUserInteractionEnabled = false
-            rightButton.isUserInteractionEnabled = false
-        } 
+    func authorButtonsEnabled(_ enabled: Bool) {
+        leftButton.isUserInteractionEnabled = enabled
+        rightButton.isUserInteractionEnabled = enabled
     }
     
     //MARK: - Responses
@@ -146,16 +135,16 @@ class QuizViewController: UIViewController {
         bottomView.backgroundColor = #colorLiteral(red: 0.7215686275, green: 0.9490196078, blue: 0.5529411765, alpha: 1)
         bottomViewLabel.textColor = #colorLiteral(red: 0.3529411765, green: 0.6509803922, blue: 0.01960784314, alpha: 1)
         
-        checkButton.layer.shadowOffset = CGSize(width: 0, height: 5)
+        bottomCTA.layer.shadowOffset = CGSize(width: 0, height: 5)
     }
     
     func incorrectResponseStyling() {
         bottomView.backgroundColor = #colorLiteral(red: 0.9924690127, green: 0.7565234303, blue: 0.7588754296, alpha: 1)
         bottomViewLabel.textColor = #colorLiteral(red: 0.9260372519, green: 0.04186752439, blue: 0.1039779559, alpha: 1)
         
-        checkButton.backgroundColor = #colorLiteral(red: 0.9850447774, green: 0.295574367, blue: 0.2933387756, alpha: 1)
-        checkButton.layer.shadowColor = #colorLiteral(red: 0.9186751246, green: 0.1684108377, blue: 0.1682819128, alpha: 1)
-        checkButton.layer.shadowOffset = CGSize(width: 0, height: 5)
+        bottomCTA.backgroundColor = #colorLiteral(red: 0.9850447774, green: 0.295574367, blue: 0.2933387756, alpha: 1)
+        bottomCTA.layer.shadowColor = #colorLiteral(red: 0.9186751246, green: 0.1684108377, blue: 0.1682819128, alpha: 1)
+        bottomCTA.layer.shadowOffset = CGSize(width: 0, height: 5)
     }
     
     //MARK: - Bottom View
@@ -173,14 +162,14 @@ class QuizViewController: UIViewController {
         UIView.animate(withDuration: 0.2) {
             self.bottomViewTopConstraint.constant -= self.bottomView.bounds.height
             self.view.layoutIfNeeded()
-            self.checkButton.setTitle(QuizButtonText.CONTINUE.rawValue, for: .normal)
+            self.bottomCTA.setTitle(QuizButtonText.CONTINUE.rawValue, for: .normal)
         }
     }
     
     func lowerBottomView() {
         UIView.animate(withDuration: 0.2) {
             self.bottomViewTransparent(true)
-            self.checkButton.setTitle(QuizButtonText.CHECK.rawValue, for: .normal)
+            self.bottomCTA.setTitle(QuizButtonText.CHECK.rawValue, for: .normal)
         } completion: { (complete: Bool) in
             self.bottomViewTopConstraint.constant += self.bottomView.bounds.height
             self.bottomViewTransparent(false)
@@ -190,11 +179,13 @@ class QuizViewController: UIViewController {
     //MARK: - Segue Preparation
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "quizToResult" {
-            let destinationVC = segue.destination as! NavigationViewController
-            let secondVC = destinationVC.viewControllers.first as! ResultViewController
-            secondVC.quizBrain.score = quizBrain.score
-            quizBrain.score = 0
-            secondVC.firstVC = self
+            let destinationVC = segue.destination as! UINavigationController
+            let resultVC = destinationVC.viewControllers.first as! ResultViewController
+            let resultViewModel = ResultViewModel(finalScore: quizBrain.score,
+                                                  totalQuestion: quizBrain.totalQuestions)
+            resultVC.viewModel = resultViewModel
+            quizBrain.reset()
+            progressView.progress = Float(quizBrain.progress)
         }
     }
 

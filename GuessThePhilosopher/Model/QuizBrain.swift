@@ -9,47 +9,16 @@ import AVFoundation
 import UIKit
 
 struct QuizBrain {
-    let totalQuestions = 5.0
+    let totalQuestions = 5
     
-    var state = QuizButtonText.CHECK
-    var score = 0.0
-    var questionNum = 0.0
-    var correctAuthor = ""
-    var wrongAuthor = ""
-    
+    private(set) var score = 0
+    private(set) var questionNum = 0
+    private(set) var correctAuthor = ""
     var userAnswer = ""
     
-    var audioPlayer = AVAudioPlayer()
-    
-    var result: Category {
-        switch (score / totalQuestions) {
-        case 0..<0.5: return Category(color: #colorLiteral(red: 1, green: 0.2941176471, blue: 0.2941176471, alpha: 1), advice: "Go read a book!")
-        case 0.5..<0.75: return Category(color: #colorLiteral(red: 0.1098039216, green: 0.6901960784, blue: 0.9647058824, alpha: 1), advice: "You barely made it...")
-        case 0.75..<0.9: return Category(color: #colorLiteral(red: 0.8078431373, green: 0.5098039216, blue: 1, alpha: 1), advice: "There's a brain in the house!")
-        default: return Category(color: #colorLiteral(red: 0.3450980392, green: 0.8, blue: 0.007843137255, alpha: 1), advice: "You are a philosopher king!")
-        }
+    var progress: Double {
+        return Double(questionNum) / Double(totalQuestions)
     }
-    
-    mutating func playSound(_ sound: Sound) {
-        
-        var soundString: String
-        
-        switch sound {
-        case .finish:
-            soundString = ["ohMyGosh", "really", "wow"].randomElement()!
-        default: soundString = sound.rawValue
-        }
-                
-        let soundFile = Bundle.main.path(forResource: soundString, ofType: "wav")
-        let url = URL(fileURLWithPath: soundFile!)
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer.play()
-        } catch {
-            print("wrong sound error")
-        }
-    }
-    
     
     mutating func getQuestion() -> (author1Name: String, author1Face: UIImage, author2Name: String, author2Face: UIImage, quoteText: String) {
         questionNum += 1
@@ -67,7 +36,6 @@ struct QuizBrain {
         
         let quoteText = quotesShuffled[zeroOrOne].quoteTexts.randomElement() ?? ""
         correctAuthor = zeroOrOne == 0 ? author1Name : author2Name
-        wrongAuthor = zeroOrOne == 0 ? author2Name : author1Name
         
         return (author1Name, author1Face, author2Name, author2Face, quoteText)
     }
@@ -80,6 +48,13 @@ struct QuizBrain {
         }
         
         return false
+    }
+    
+    mutating func reset() {
+        score = 0
+        questionNum = 0
+        correctAuthor = ""
+        userAnswer = ""
     }
     
     func isGameOver() -> Bool {
